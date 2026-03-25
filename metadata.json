@@ -1,0 +1,5 @@
+{
+  "name": "StudySmart AI",
+  "description": "AI-powered study assistant to generate concise notes from PDFs.",
+  "requestFramePermissions": []
+}
