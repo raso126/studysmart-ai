@@ -4,8 +4,7 @@ import { motion } from 'motion/react';
 import { FileUploader } from './components/FileUploader';
 import { Settings } from './components/Settings';
 import { NotesDisplay } from './components/NotesDisplay';
-import { extractTextFromPDF } from './lib/utils/pdf-utils';
-import { generateNotes, NoteGenerationOptions } from './services/ai-service';
+import { NoteGenerationOptions } from './services/ai-service';
 import { cn } from './lib/utils';
 
 export default function App() {
@@ -27,13 +26,35 @@ export default function App() {
     setNotes('');
 
     try {
-      const text = await extractTextFromPDF(file);
-      if (!text || text.trim().length < 50) {
-        throw new Error("Could not extract enough text from the PDF. It might be an image-only PDF or scanned document.");
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('length', options.length);
+      formData.append('format', options.format);
+      formData.append('includeQuestions', options.includeQuestions.toString());
+
+      const response = await fetch('/generate-notes', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to generate notes';
+
+        if (errorText) {
+          try {
+            const parsed = JSON.parse(errorText);
+            errorMessage = parsed.error || parsed.message || errorMessage;
+          } catch {
+            errorMessage = errorText;
+          }
+        }
+
+        throw new Error(errorMessage);
       }
-      
-      const generatedNotes = await generateNotes(text, options);
-      setNotes(generatedNotes);
+
+      const data = await response.json();
+      setNotes(data.notes);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
       console.error(err);
